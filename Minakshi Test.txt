@@ -1,0 +1,72 @@
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class ShoppingCartTest {
+  
+  private WebDriver driver;
+  private WebDriverWait wait;
+
+  public void setup() {
+    System.setProperty("webdriver.chrome.driver", "path/to/chromedriver.exe");
+    driver = new ChromeDriver();
+    wait = new WebDriverWait(driver, 10);
+  }
+
+  public void tearDown() {
+    driver.quit();
+  }
+
+  public void testScenario() {
+    // Given: I add 4 random items to my cart
+    driver.get("https://cms.demo.katalon.com/wp-admin/");
+    
+    addRandomItemToCart();
+    addRandomItemToCart();
+    addRandomItemToCart();
+    addRandomItemToCart();
+    
+    // When: I view my cart
+    WebElement cartIcon = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//a[@class='cart-icon']")));
+    cartIcon.click();
+    
+    // Then: I find total four items listed in my cart
+    List<WebElement> cartItems = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath("//div[@class='cart-item']")));
+    assert cartItems.size() == 4;
+    
+    // When: I search four lowest price items
+    List<WebElement> cartPrices = driver.findElements(By.xpath("//div[@class='cart-item-price']"));
+    List<Double> prices = cartPrices.stream()
+                                     .map(e -> Double.parseDouble(e.getText().replace("$", "")))
+                                     .sorted()
+                                     .limit(4)
+                                     .collect(Collectors.toList());
+    
+    // And: I am able to remove the lowest price item from my cart
+    double lowestPrice = prices.get(0);
+    WebElement lowestPriceItem = driver.findElement(By.xpath("//div[@class='cart-item-price'][text()='$" + lowestPrice + "']/ancestor::div[@class='cart-item']"));
+    WebElement removeButton = lowestPriceItem.findElement(By.xpath("//button[@class='remove-button']"));
+    removeButton.click();
+    
+    // THEN: I am able to verify three items in my cart
+    wait.until(ExpectedConditions.stalenessOf(lowestPriceItem));
+    cartItems = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath("//div[@class='cart-item']")));
+    assert cartItems.size() == 3;
+  }
+  
+  private void addRandomItemToCart() {
+    // Implementation of adding a random item to the cart
+  }
+
+  public static void main(String[] args) {
+    ShoppingCartTest test = new ShoppingCartTest();
+    test.setup();
+    test.testScenario();
+    test.tearDown();
+  }
+}
